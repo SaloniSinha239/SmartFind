@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SmartFind — Smart Campus Lost & Found Tracker. Report lost items, discover found items, and reunite with your belongings.">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+  <%- include('../partials/toast') %>
+
+  <main class="main-content">
+    <!-- Hero -->
+    <section class="hero">
+      <h1 class="hero__title">Lost Something?<br>We'll Help You<br>Find It.</h1>
+      <p class="hero__subtitle">
+        SmartFind is a smart campus lost-and-found tracker. Report lost or found items,
+        get automatic matches, and reunite with your belongings faster.
+      </p>
+      <div class="hero__actions">
+        <% if (currentUser) { %>
+          <a href="/report" class="btn btn--primary btn--lg" id="hero-report">Report an Item</a>
+        <% } else { %>
+          <a href="/register" class="btn btn--primary btn--lg" id="hero-signup">Get Started</a>
+        <% } %>
+        <a href="/items" class="btn btn--secondary btn--lg" id="hero-browse">Browse Items</a>
+        <a href="/map" class="btn btn--outline btn--lg" id="hero-map">🗺️ Campus Map</a>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <div class="stat-card__number"><%= stats.totalItems %></div>
+        <div class="stat-card__label">Items Reported</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__number"><%= stats.resolved %></div>
+        <div class="stat-card__label">Items Reunited</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__number"><%= stats.totalUsers %></div>
+        <div class="stat-card__label">Registered Users</div>
+      </div>
+    </section>
+
+    <!-- Recent Items -->
+    <div class="container">
+      <div class="section-header text-center">
+        <h2 class="section-header__title">Recently Reported</h2>
+        <p class="section-header__desc">Latest items reported on campus</p>
+      </div>
+
+      <% if (recentItems.length > 0) { %>
+        <div class="card-grid">
+          <% recentItems.forEach(item => { %>
+            <a href="/items/<%= item._id %>" class="card" id="item-<%= item._id %>">
+              <img src="/api/items/<%= item._id %>/image" alt="<%= item.name %>" class="card__image" loading="lazy">
+              <div class="card__body">
+                <span class="card__type-badge card__type-badge--<%= item.type %>"><%= item.type %></span>
+                <h3 class="card__title"><%= item.name %></h3>
+                <p class="card__desc"><%= item.description %></p>
+                <div class="card__meta">
+                  <span class="card__category-badge"><%= item.category %></span>
+                  <span><%= new Date(item.createdAt).toLocaleDateString() %></span>
+                </div>
+              </div>
+            </a>
+          <% }) %>
+        </div>
+        <div class="text-center mt-3">
+          <a href="/items" class="btn btn--secondary" id="view-all-items">View All Items →</a>
+        </div>
+      <% } else { %>
+        <div class="empty-state">
+          <div class="empty-state__icon">📭</div>
+          <p class="empty-state__text">No items reported yet. Be the first!</p>
+          <% if (currentUser) { %>
+            <a href="/report" class="btn btn--primary">Report an Item</a>
+          <% } else { %>
+            <a href="/register" class="btn btn--primary">Sign Up to Report</a>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+</body>
+</html>

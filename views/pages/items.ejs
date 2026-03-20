@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Browse lost and found items on campus.">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+  <%- include('../partials/toast') %>
+
+  <main class="main-content">
+    <div class="container">
+      <div class="section-header">
+        <h1 class="section-header__title">Browse Items</h1>
+        <p class="section-header__desc">Search and filter lost & found items on campus</p>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar" id="filterBar">
+        <div class="search-input-wrap">
+          <input type="text" class="form-control" id="searchInput" placeholder="Search items..." aria-label="Search items">
+        </div>
+        <select class="form-control" id="typeFilter" aria-label="Filter by type">
+          <option value="">All Types</option>
+          <option value="lost">🔴 Lost</option>
+          <option value="found">🟢 Found</option>
+        </select>
+        <select class="form-control" id="categoryFilter" aria-label="Filter by category">
+          <option value="">All Categories</option>
+          <option value="electronics">Electronics</option>
+          <option value="clothing">Clothing</option>
+          <option value="accessories">Accessories</option>
+          <option value="documents">Documents</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <!-- Items Grid -->
+      <div class="card-grid" id="itemsGrid">
+        <div class="spinner"></div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+
+  <script>
+    let currentPage = 1;
+    let debounceTimer;
+
+    async function fetchItems(page = 1) {
+      const search = document.getElementById('searchInput').value.trim();
+      const type = document.getElementById('typeFilter').value;
+      const category = document.getElementById('categoryFilter').value;
+
+      const params = new URLSearchParams({ page, limit: 12 });
+      if (search) params.set('search', search);
+      if (type) params.set('type', type);
+      if (category) params.set('category', category);
+      if (search) params.set('sort', 'relevance');
+
+      try {
+        const res = await fetch('/api/items?' + params.toString());
+        const data = await res.json();
+        renderItems(data.items);
+        renderPagination(data.page, data.pages);
+      } catch (err) {
+        document.getElementById('itemsGrid').innerHTML = '<div class="empty-state"><div class="empty-state__icon">❌</div><p class="empty-state__text">Failed to load items.</p></div>';
+      }
+    }
+
+    function renderItems(items) {
+      const grid = document.getElementById('itemsGrid');
+      if (!items || items.length === 0) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state__icon">🔍</div><p class="empty-state__text">No items found. Try different search terms.</p></div>';
+        return;
+      }
+
+      grid.innerHTML = items.map(item => `
+        <a href="/items/${item._id}" class="card" id="item-${item._id}">
+          <img src="/api/items/${item._id}/image" alt="${item.name}" class="card__image" loading="lazy"
+            onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 200%22><rect fill=%22%231e293b%22 width=%22300%22 height=%22200%22/><text x=%2250%25%22 y=%2250%25%22 fill=%22%2364748b%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2216%22>No Image</text></svg>'">
+          <div class="card__body">
+            <span class="card__type-badge card__type-badge--${item.type}">${item.type}</span>
+            <h3 class="card__title">${item.name}</h3>
+            <p class="card__desc">${item.description}</p>
+            <div class="card__meta">
+              <span class="card__category-badge">${item.category}</span>
+              <span>${new Date(item.createdAt).toLocaleDateString()}</span>
+            </div>
+          </div>
+        </a>
+      `).join('');
+    }
+
+    function renderPagination(current, total) {
+      const container = document.getElementById('pagination');
+      if (total <= 1) { container.innerHTML = ''; return; }
+
+      let html = '';
+      if (current > 1) html += `<button class="pagination__btn" onclick="goToPage(${current - 1})">← Prev</button>`;
+      for (let i = 1; i <= total; i++) {
+        html += `<button class="pagination__btn ${i === current ? 'pagination__btn--active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+      }
+      if (current < total) html += `<button class="pagination__btn" onclick="goToPage(${current + 1})">Next →</button>`;
+      container.innerHTML = html;
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      fetchItems(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Debounced search
+    document.getElementById('searchInput').addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => { currentPage = 1; fetchItems(1); }, 400);
+    });
+
+    document.getElementById('typeFilter').addEventListener('change', () => { currentPage = 1; fetchItems(1); });
+    document.getElementById('categoryFilter').addEventListener('change', () => { currentPage = 1; fetchItems(1); });
+
+    // Initial load
+    fetchItems();
+  </script>
+</body>
+</html>

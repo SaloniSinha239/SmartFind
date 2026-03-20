@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Register for SmartFind campus lost & found tracker.">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+  <%- include('../partials/toast') %>
+
+  <main class="main-content auth-page">
+    <div class="form-card">
+      <h1 class="form-card__title">Create Account</h1>
+      <form id="registerForm" novalidate>
+        <div class="form-group">
+          <label for="name">Full Name <span class="required">*</span></label>
+          <input type="text" id="name" name="name" class="form-control" placeholder="John Doe" required minlength="2" aria-label="Full name">
+          <div class="form-error" id="nameError"></div>
+        </div>
+        <div class="form-group">
+          <label for="email">Email <span class="required">*</span></label>
+          <input type="email" id="email" name="email" class="form-control" placeholder="your@email.com" required aria-label="Email address">
+          <div class="form-error" id="emailError"></div>
+        </div>
+        <div class="form-group">
+          <label for="password">Password <span class="required">*</span></label>
+          <input type="password" id="password" name="password" class="form-control" placeholder="Min 8 characters" required minlength="8" aria-label="Password">
+          <div class="form-error" id="passwordError"></div>
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password <span class="required">*</span></label>
+          <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" placeholder="Re-enter password" required aria-label="Confirm password">
+          <div class="form-error" id="confirmPasswordError"></div>
+        </div>
+        <button type="submit" class="btn btn--primary btn--full btn--lg" id="registerBtn">Create Account</button>
+      </form>
+      <div class="auth-footer">
+        Already have an account? <a href="/login">Login</a>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+
+  <script>
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('registerBtn');
+      btn.disabled = true;
+      btn.textContent = 'Creating account...';
+
+      document.querySelectorAll('.form-error').forEach(el => { el.textContent = ''; el.classList.remove('visible'); });
+      document.querySelectorAll('.form-control').forEach(el => el.classList.remove('form-control--error'));
+
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      let valid = true;
+
+      if (!name || name.length < 2) { showFieldError('name', 'Name must be at least 2 characters.'); valid = false; }
+      if (!email) { showFieldError('email', 'Email is required.'); valid = false; }
+      else if (!/^\S+@\S+\.\S+$/.test(email)) { showFieldError('email', 'Enter a valid email.'); valid = false; }
+      if (!password || password.length < 8) { showFieldError('password', 'Password must be at least 8 characters.'); valid = false; }
+      if (password !== confirmPassword) { showFieldError('confirmPassword', 'Passwords do not match.'); valid = false; }
+
+      if (!valid) { btn.disabled = false; btn.textContent = 'Create Account'; return; }
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, confirmPassword })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Account created! Redirecting...', 'success');
+          setTimeout(() => window.location.href = '/', 800);
+        } else {
+          showToast(data.error || 'Registration failed.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Create Account';
+        }
+      } catch (err) {
+        showToast('Network error. Please try again.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    });
+
+    function showFieldError(fieldId, message) {
+      const errEl = document.getElementById(fieldId + 'Error');
+      const input = document.getElementById(fieldId);
+      if (errEl) { errEl.textContent = message; errEl.classList.add('visible'); }
+      if (input) input.classList.add('form-control--error');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="View your match alerts and notifications.">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+  <%- include('../partials/toast') %>
+
+  <main class="main-content">
+    <div class="container container--narrow" style="max-width:700px;">
+      <div class="section-header">
+        <h1 class="section-header__title">🔔 Alerts</h1>
+        <p class="section-header__desc">Match notifications and updates</p>
+      </div>
+
+      <div id="alertsContainer">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+
+  <script>
+    async function loadAlerts() {
+      try {
+        const res = await fetch('/api/alerts');
+        const data = await res.json();
+        renderAlerts(data.alerts || []);
+      } catch (err) {
+        document.getElementById('alertsContainer').innerHTML =
+          '<div class="empty-state"><div class="empty-state__icon">❌</div><p class="empty-state__text">Failed to load alerts.</p></div>';
+      }
+    }
+
+    function renderAlerts(alerts) {
+      const container = document.getElementById('alertsContainer');
+      if (alerts.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state__icon">🔔</div>
+            <p class="empty-state__text">No alerts yet. You'll be notified when matches are found for your items!</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = alerts.map(alert => {
+        const lost = alert.lostItemId;
+        const found = alert.foundItemId;
+        const score = Math.round(alert.score * 100);
+        return `
+          <div class="alert-item" id="alert-${alert._id}">
+            <div class="alert-item__dot"></div>
+            <div class="alert-item__content">
+              <h4>Match found: ${lost?.name || 'Unknown'} ↔ ${found?.name || 'Unknown'}</h4>
+              <p>Score: ${score}% · ${new Date(alert.createdAt).toLocaleDateString()}</p>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <a href="/dashboard/matches" class="btn btn--sm btn--primary">View</a>
+              <button class="btn btn--sm btn--secondary" onclick="markRead('${alert._id}')">✓ Read</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    async function markRead(alertId) {
+      try {
+        await fetch('/api/alerts/' + alertId + '/read', { method: 'PATCH' });
+        document.getElementById('alert-' + alertId)?.remove();
+        showToast('Alert marked as read.', 'info');
+      } catch (err) {}
+    }
+
+    loadAlerts();
+    // Poll every 60 seconds
+    setInterval(loadAlerts, 60000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interactive campus map showing lost and found item locations.">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/map.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+  <%- include('../partials/toast') %>
+
+  <main class="main-content" style="padding:0;height:calc(100vh - var(--nav-height));">
+    <div class="map-page">
+      <div class="map-container">
+        <div id="campusMap"></div>
+      </div>
+
+      <div class="map-sidebar">
+        <h2 class="map-sidebar__title">🗺️ Campus Map</h2>
+
+        <!-- Radius Slider -->
+        <div class="map-sidebar__section">
+          <h4>Proximity Filter</h4>
+          <div class="radius-slider">
+            <input type="range" id="radiusSlider" min="100" max="2000" value="1000" step="100" aria-label="Radius in meters">
+            <div class="radius-value">Radius: <span id="radiusLabel">1000</span>m</div>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="map-sidebar__section">
+          <h4>Legend</h4>
+          <div class="map-legend">
+            <div class="map-legend__item">
+              <div class="map-legend__dot map-legend__dot--lost"></div>
+              <span>Lost Items</span>
+            </div>
+            <div class="map-legend__item">
+              <div class="map-legend__dot map-legend__dot--found"></div>
+              <span>Found Items</span>
+            </div>
+            <div class="map-legend__item">
+              <div class="map-legend__dot map-legend__dot--you"></div>
+              <span>Your Location</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nearby Items -->
+        <div class="map-sidebar__section">
+          <h4>Nearby Items (<span id="itemCount">0</span>)</h4>
+          <div class="map-sidebar__items" id="nearbyItems">
+            <p style="color:var(--text-muted);font-size:0.85rem;">Loading...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Campus center (default: IIT Delhi)
+    const CAMPUS_CENTER = [28.5456, 77.1926];
+    const DEFAULT_ZOOM = 16;
+
+    let map, markersLayer, userMarker, userLat, userLng;
+
+    // Initialize map
+    map = L.map('campusMap').setView(CAMPUS_CENTER, DEFAULT_ZOOM);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    markersLayer = L.layerGroup().addTo(map);
+
+    // Custom marker icons
+    function createIcon(color) {
+      return L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      });
+    }
+
+    const lostIcon = createIcon('#ef4444');
+    const foundIcon = createIcon('#22c55e');
+    const userIcon = createIcon('#3b82f6');
+
+    // Get user location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          userLat = pos.coords.latitude;
+          userLng = pos.coords.longitude;
+          userMarker = L.marker([userLat, userLng], { icon: userIcon })
+            .addTo(map)
+            .bindPopup('<strong>📍 You are here</strong>');
+          map.setView([userLat, userLng], DEFAULT_ZOOM);
+          fetchMapItems();
+        },
+        () => {
+          // Use default campus center
+          userLat = CAMPUS_CENTER[0];
+          userLng = CAMPUS_CENTER[1];
+          fetchMapItems();
+        }
+      );
+    } else {
+      userLat = CAMPUS_CENTER[0];
+      userLng = CAMPUS_CENTER[1];
+      fetchMapItems();
+    }
+
+    // Radius slider
+    let debounceTimer;
+    const radiusSlider = document.getElementById('radiusSlider');
+    radiusSlider.addEventListener('input', () => {
+      document.getElementById('radiusLabel').textContent = radiusSlider.value;
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(fetchMapItems, 300);
+    });
+
+    async function fetchMapItems() {
+      const radius = parseInt(radiusSlider.value) / 1000; // Convert m to km
+      try {
+        const params = new URLSearchParams({ lat: userLat, lng: userLng, radius });
+        const res = await fetch('/api/items/map?' + params.toString());
+        const geojson = await res.json();
+
+        markersLayer.clearLayers();
+        if (userMarker) userMarker.addTo(map);
+
+        const items = geojson.features || [];
+        document.getElementById('itemCount').textContent = items.length;
+
+        // Render markers
+        items.forEach(feature => {
+          const { id, type, name, category, locationLabel, imageUrl, createdAt } = feature.properties;
+          const [lng, lat] = feature.geometry.coordinates;
+          const icon = type === 'lost' ? lostIcon : foundIcon;
+
+          const marker = L.marker([lat, lng], { icon })
+            .bindPopup(`
+              <div class="popup-card">
+                <img src="${imageUrl}" alt="${name}" class="popup-card__img"
+                  onerror="this.style.display='none'">
+                <div class="popup-card__name">${name}</div>
+                <div class="popup-card__meta">
+                  <span class="card__type-badge card__type-badge--${type}" style="font-size:0.65rem;">${type}</span>
+                  ${category} · ${locationLabel || 'Campus'}
+                </div>
+                <a href="/items/${id}" class="popup-card__btn">View Details</a>
+              </div>
+            `);
+
+          markersLayer.addLayer(marker);
+        });
+
+        // Render sidebar items
+        const sidebarEl = document.getElementById('nearbyItems');
+        if (items.length === 0) {
+          sidebarEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No items in this area.</p>';
+        } else {
+          sidebarEl.innerHTML = items.map(f => `
+            <div class="map-item-card" onclick="window.location.href='/items/${f.properties.id}'">
+              <img src="${f.properties.imageUrl}" alt="${f.properties.name}" class="map-item-card__thumb"
+                onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><rect fill=%22%231e293b%22 width=%2248%22 height=%2248%22/></svg>'">
+              <div class="map-item-card__info">
+                <h5>${f.properties.name}</h5>
+                <p>
+                  <span class="card__type-badge card__type-badge--${f.properties.type}" style="font-size:0.6rem;padding:2px 6px;">${f.properties.type}</span>
+                  ${f.properties.category}
+                </p>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Map fetch error:', err);
+      }
+    }
+  </script>
+</body>
+</html>

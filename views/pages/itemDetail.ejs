@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Item detail page — SmartFind campus lost & found tracker.">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+  <%- include('../partials/toast') %>
+
+  <main class="main-content">
+    <div class="container">
+      <div id="itemContent">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+
+  <script>
+    const itemId = '<%= itemId %>';
+
+    async function loadItem() {
+      try {
+        const res = await fetch('/api/items/' + itemId);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        renderItem(data.item);
+      } catch (err) {
+        document.getElementById('itemContent').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state__icon">😕</div>
+            <p class="empty-state__text">Item not found.</p>
+            <a href="/items" class="btn btn--secondary">← Back to Browse</a>
+          </div>`;
+      }
+    }
+
+    function renderItem(item) {
+      const date = new Date(item.createdAt).toLocaleString();
+      const statusClass = item.status;
+      const isOwner = false; // Will be set by session check
+
+      document.getElementById('itemContent').innerHTML = `
+        <a href="/items" class="btn btn--outline btn--sm mb-3">← Back to Browse</a>
+        <div class="item-detail">
+          <div class="item-detail__image-wrap">
+            <img src="/api/items/${item._id}/image" alt="${item.name}" class="item-detail__image">
+          </div>
+          <div class="item-detail__info">
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
+              <span class="card__type-badge card__type-badge--${item.type}">${item.type}</span>
+              <span class="badge badge--${item.status}">${item.status}</span>
+            </div>
+            <h1 class="item-detail__title">${item.name}</h1>
+            <p style="color:var(--text-secondary);line-height:1.7;margin-bottom:16px;">${item.description}</p>
+
+            ${item.tags && item.tags.length > 0 ? `
+              <div class="tags-display mb-2">
+                ${item.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+              </div>` : ''}
+
+            <ul class="item-detail__meta-list">
+              <li><strong>Category</strong> <span>${item.category}</span></li>
+              <li><strong>Location</strong> <span>${item.locationLabel || 'Not specified'}</span></li>
+              <li><strong>Reported by</strong> <span>${item.reportedBy?.name || 'Unknown'}</span></li>
+              <li><strong>Date</strong> <span>${date}</span></li>
+              ${item.contactEmail ? `<li><strong>Contact</strong> <span>${item.contactEmail}</span></li>` : ''}
+            </ul>
+
+            ${item.status === 'active' && item.type === 'found' ? `
+              <a href="/claim/${item._id}" class="btn btn--primary btn--lg btn--full mt-2" id="claimBtn">
+                📋 Submit Claim — This is mine!
+              </a>
+            ` : ''}
+
+            ${item.status === 'claimed' ? `
+              <div class="badge badge--claimed" style="padding:12px 20px;font-size:0.85rem;margin-top:16px;">
+                ⏳ Claim Under Review
+              </div>
+            ` : ''}
+
+            ${item.status === 'resolved' ? `
+              <div class="badge badge--resolved" style="padding:12px 20px;font-size:0.85rem;margin-top:16px;">
+                ✅ Item Resolved
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    loadItem();
+
+    // Poll status every 5 seconds
+    setInterval(loadItem, 5000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Login to SmartFind campus lost & found tracker.">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+  <%- include('../partials/toast') %>
+
+  <main class="main-content auth-page">
+    <div class="form-card">
+      <h1 class="form-card__title">Welcome Back</h1>
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label for="email">Email <span class="required">*</span></label>
+          <input type="email" id="email" name="email" class="form-control" placeholder="your@email.com" required aria-label="Email address">
+          <div class="form-error" id="emailError"></div>
+        </div>
+        <div class="form-group">
+          <label for="password">Password <span class="required">*</span></label>
+          <input type="password" id="password" name="password" class="form-control" placeholder="Enter password" required aria-label="Password">
+          <div class="form-error" id="passwordError"></div>
+        </div>
+        <button type="submit" class="btn btn--primary btn--full btn--lg" id="loginBtn">Login</button>
+      </form>
+      <div class="auth-footer">
+        Don't have an account? <a href="/register">Sign Up</a>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Logging in...';
+
+      // Clear errors
+      document.querySelectorAll('.form-error').forEach(el => { el.textContent = ''; el.classList.remove('visible'); });
+      document.querySelectorAll('.form-control').forEach(el => el.classList.remove('form-control--error'));
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      let valid = true;
+
+      if (!email) { showFieldError('email', 'Email is required.'); valid = false; }
+      else if (!/^\S+@\S+\.\S+$/.test(email)) { showFieldError('email', 'Enter a valid email.'); valid = false; }
+      if (!password) { showFieldError('password', 'Password is required.'); valid = false; }
+
+      if (!valid) { btn.disabled = false; btn.textContent = 'Login'; return; }
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Login successful! Redirecting...', 'success');
+          setTimeout(() => window.location.href = '/', 800);
+        } else {
+          showToast(data.error || 'Login failed.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Login';
+        }
+      } catch (err) {
+        showToast('Network error. Please try again.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Login';
+      }
+    });
+
+    function showFieldError(fieldId, message) {
+      const errEl = document.getElementById(fieldId + 'Error');
+      const input = document.getElementById(fieldId);
+      if (errEl) { errEl.textContent = message; errEl.classList.add('visible'); }
+      if (input) input.classList.add('form-control--error');
+    }
+  </script>
+</body>
+</html>

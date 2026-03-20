@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="View your matched lost and found items.">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+  <%- include('../partials/toast') %>
+
+  <main class="main-content">
+    <div class="container">
+      <div class="section-header">
+        <h1 class="section-header__title">🔗 My Matches</h1>
+        <p class="section-header__desc">Items that match your lost or found reports</p>
+      </div>
+
+      <div id="matchesContainer">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+
+  <script>
+    async function loadMatches() {
+      try {
+        const res = await fetch('/api/items/matches');
+        const data = await res.json();
+        renderMatches(data.matches || []);
+      } catch (err) {
+        document.getElementById('matchesContainer').innerHTML =
+          '<div class="empty-state"><div class="empty-state__icon">❌</div><p class="empty-state__text">Failed to load matches.</p></div>';
+      }
+    }
+
+    function renderMatches(matches) {
+      const container = document.getElementById('matchesContainer');
+      if (matches.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state__icon">🔍</div>
+            <p class="empty-state__text">No matches found yet. Report an item and our matching engine will find potential matches!</p>
+            <a href="/report" class="btn btn--primary">Report an Item</a>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = matches.map(match => {
+        const score = Math.round(match.score * 100);
+        const lost = match.lostItemId;
+        const found = match.foundItemId;
+        return `
+          <div class="match-card" id="match-${match._id}">
+            <div class="match-card__score">${score}%</div>
+            <div class="match-card__info">
+              <h4>🔴 ${lost?.name || 'Unknown'} ↔ 🟢 ${found?.name || 'Unknown'}</h4>
+              <p>
+                Lost at: ${lost?.locationLabel || 'N/A'} · Found at: ${found?.locationLabel || 'N/A'}
+                <br>Score: ${score}% · Status: <span class="badge badge--${match.status}">${match.status}</span>
+              </p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              ${lost ? `<a href="/items/${lost._id}" class="btn btn--sm btn--secondary">View Lost</a>` : ''}
+              ${found ? `<a href="/items/${found._id}" class="btn btn--sm btn--secondary">View Found</a>` : ''}
+              ${match.status === 'pending' ? `<button class="btn btn--sm btn--danger" onclick="dismissMatch('${match._id}')">Dismiss</button>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    async function dismissMatch(matchId) {
+      if (!confirm('Are you sure you want to dismiss this match?')) return;
+      try {
+        const res = await fetch('/api/alerts/' + matchId + '/read', { method: 'PATCH' });
+        if (res.ok) {
+          showToast('Match dismissed.', 'info');
+          loadMatches();
+        }
+      } catch (err) {
+        showToast('Failed to dismiss match.', 'error');
+      }
+    }
+
+    loadMatches();
+  </script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+/* ═══════════════════════════════════════
+   SmartFind — Map Page Styles
+   ═══════════════════════════════════════ */
+
+.map-page {
+  display: flex;
+  height: calc(100vh - var(--nav-height));
+  overflow: hidden;
+}
+
+.map-container {
+  flex: 1;
+  position: relative;
+}
+
+#campusMap {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Map Sidebar ── */
+.map-sidebar {
+  width: 320px;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border-color);
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.map-sidebar__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.map-sidebar__section h4 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+/* Radius slider */
+.radius-slider {
+  width: 100%;
+}
+
+.radius-slider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-surface);
+  outline: none;
+}
+
+.radius-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(99,102,241,0.4);
+}
+
+.radius-slider input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  cursor: pointer;
+  border: none;
+}
+
+.radius-value {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+/* Legend */
+.map-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.map-legend__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.map-legend__dot--lost { background: var(--lost-color); }
+.map-legend__dot--found { background: var(--found-color); }
+.map-legend__dot--you { background: var(--info); }
+
+/* Nearby items list */
+.map-sidebar__items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-item-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  display: flex;
+  gap: 10px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.map-item-card:hover {
+  border-color: var(--primary);
+}
+
+.map-item-card__thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--bg-card);
+}
+
+.map-item-card__info h5 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.map-item-card__info p {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ── Leaflet popup overrides ── */
+.leaflet-popup-content-wrapper {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--bg-card) !important;
+  border-right: 1px solid var(--border-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.leaflet-popup-close-button {
+  color: var(--text-muted) !important;
+}
+
+.popup-card {
+  min-width: 200px;
+}
+
+.popup-card__img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.popup-card__name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.popup-card__meta {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.popup-card__btn {
+  display: block;
+  text-align: center;
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .map-page {
+    flex-direction: column-reverse;
+  }
+
+  .map-sidebar {
+    width: 100%;
+    max-height: 40vh;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .map-container {
+    height: 60vh;
+  }
+}

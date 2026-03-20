@@ -1,0 +1,76 @@
+<!-- SmartFind Navbar Partial -->
+<nav class="navbar" id="mainNavbar">
+  <a href="/" class="navbar__brand">
+    <span class="navbar__brand-icon">🔍</span>
+    SmartFind
+  </a>
+
+  <button class="navbar__toggle" id="navToggle" aria-label="Toggle navigation">
+    <span></span><span></span><span></span>
+  </button>
+
+  <ul class="navbar__nav" id="navMenu">
+    <li><a href="/" class="navbar__link" id="nav-home">🏠 Home</a></li>
+    <li><a href="/items" class="navbar__link" id="nav-browse">📋 Browse Items</a></li>
+    <li><a href="/map" class="navbar__link" id="nav-map">🗺️ Campus Map</a></li>
+
+    <% if (currentUser) { %>
+      <li><a href="/report" class="navbar__link navbar__link--cta" id="nav-report">➕ Report Item</a></li>
+      <li><a href="/dashboard/matches" class="navbar__link" id="nav-matches">🔗 My Matches</a></li>
+      <li>
+        <a href="/dashboard/alerts" class="navbar__link navbar__bell" id="nav-alerts">
+          🔔
+          <span class="navbar__badge" id="alertBadge" data-count="<%= alertCount || 0 %>">
+            <%= alertCount > 0 ? alertCount : '' %>
+          </span>
+        </a>
+      </li>
+      <% if (currentUser.role === 'admin') { %>
+        <li><a href="/admin" class="navbar__link" id="nav-admin">⚙️ Admin Panel</a></li>
+      <% } %>
+      <li>
+        <a href="#" class="navbar__link" id="nav-logout" onclick="handleLogout(event)">
+          Logout (<%= currentUser.displayName %>)
+        </a>
+      </li>
+    <% } else { %>
+      <li><a href="/login" class="navbar__link" id="nav-login">Login</a></li>
+      <li><a href="/register" class="navbar__link navbar__link--cta" id="nav-register">Sign Up</a></li>
+    <% } %>
+  </ul>
+</nav>
+
+<script>
+  // Mobile nav toggle
+  document.getElementById('navToggle').addEventListener('click', () => {
+    document.getElementById('navMenu').classList.toggle('open');
+  });
+
+  // Logout handler
+  async function handleLogout(e) {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      if (res.ok) {
+        window.location.href = '/login';
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  }
+
+  // Poll alert count every 60s
+  <% if (currentUser) { %>
+  setInterval(async () => {
+    try {
+      const res = await fetch('/api/alerts/count');
+      const data = await res.json();
+      const badge = document.getElementById('alertBadge');
+      if (badge && data.count !== undefined) {
+        badge.textContent = data.count > 0 ? data.count : '';
+        badge.setAttribute('data-count', data.count);
+      }
+    } catch (e) {}
+  }, 60000);
+  <% } %>
+</script>

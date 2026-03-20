@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SmartFind Admin Panel — Manage claims and items.">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+  <%- include('../partials/toast') %>
+
+  <main class="main-content">
+    <div class="container">
+      <div class="section-header">
+        <h1 class="section-header__title">⚙️ Admin Panel</h1>
+        <p class="section-header__desc">Manage claims and verify item ownership</p>
+      </div>
+
+      <!-- Tab buttons -->
+      <div class="filter-bar" style="margin-bottom:24px;">
+        <button class="btn btn--primary btn--sm" id="tabPending" onclick="loadClaims('pending')">Pending Claims</button>
+        <button class="btn btn--secondary btn--sm" id="tabAll" onclick="loadClaims('all')">All Claims</button>
+      </div>
+
+      <div id="claimsContainer">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+
+  <script>
+    let currentTab = 'pending';
+
+    async function loadClaims(tab = 'pending') {
+      currentTab = tab;
+
+      // Update tab styles
+      document.getElementById('tabPending').className = tab === 'pending' ? 'btn btn--primary btn--sm' : 'btn btn--secondary btn--sm';
+      document.getElementById('tabAll').className = tab === 'all' ? 'btn btn--primary btn--sm' : 'btn btn--secondary btn--sm';
+
+      try {
+        const endpoint = tab === 'pending' ? '/api/claims/pending' : '/api/claims/all';
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        renderClaims(data.claims || []);
+      } catch (err) {
+        document.getElementById('claimsContainer').innerHTML =
+          '<div class="empty-state"><div class="empty-state__icon">❌</div><p class="empty-state__text">Failed to load claims.</p></div>';
+      }
+    }
+
+    function renderClaims(claims) {
+      const container = document.getElementById('claimsContainer');
+      if (claims.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state__icon">✅</div>
+            <p class="empty-state__text">${currentTab === 'pending' ? 'No pending claims!' : 'No claims found.'}</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = claims.map(claim => {
+        const item = claim.itemId;
+        const claimant = claim.claimantId;
+        return `
+          <div class="admin-claim" id="claim-${claim._id}">
+            <div class="admin-claim__header">
+              <div>
+                <h3 style="font-size:1.1rem;margin-bottom:4px;">${item?.name || 'Unknown Item'}</h3>
+                <p style="font-size:0.85rem;color:var(--text-secondary);">
+                  Claimed by: <strong>${claimant?.name || 'Unknown'}</strong> (${claimant?.email || ''})
+                  · <span class="badge badge--${claim.status}">${claim.status}</span>
+                </p>
+                <p style="font-size:0.8rem;color:var(--text-muted);">
+                  Submitted: ${new Date(claim.createdAt).toLocaleString()}
+                  ${claim.contactPhone ? ` · Phone: ${claim.contactPhone}` : ''}
+                </p>
+              </div>
+              ${item ? `<img src="/api/items/${item._id}/image" alt="${item.name}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">` : ''}
+            </div>
+
+            <div class="admin-claim__comparison">
+              <div class="admin-claim__side">
+                <h5>📝 Reporter's Private Notes</h5>
+                <p style="font-size:0.9rem;">${item?.privateNotes || '<em>No private notes provided</em>'}</p>
+              </div>
+              <div class="admin-claim__side">
+                <h5>📋 Claimant's Proof</h5>
+                <p style="font-size:0.9rem;">${claim.proofText}</p>
+                ${claim.proofImageId ? `<img src="/api/items/${claim.proofImageId}/image" alt="Proof" style="max-width:100%;max-height:150px;margin-top:8px;border-radius:6px;">` : ''}
+              </div>
+            </div>
+
+            ${claim.status === 'pending' ? `
+              <div class="form-group">
+                <label for="notes-${claim._id}">Admin Notes</label>
+                <textarea id="notes-${claim._id}" class="form-control" rows="2" placeholder="Optional notes for the claimant..."></textarea>
+              </div>
+              <div class="admin-claim__actions">
+                <button class="btn btn--success" onclick="handleClaim('${claim._id}', 'approve')">✅ Approve</button>
+                <button class="btn btn--danger" onclick="handleClaim('${claim._id}', 'reject')">❌ Reject</button>
+              </div>
+            ` : `
+              ${claim.adminNotes ? `<p style="font-size:0.85rem;margin-top:12px;"><strong>Admin Notes:</strong> ${claim.adminNotes}</p>` : ''}
+              ${claim.resolvedAt ? `<p style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Resolved: ${new Date(claim.resolvedAt).toLocaleString()}</p>` : ''}
+            `}
+          </div>`;
+      }).join('');
+    }
+
+    async function handleClaim(claimId, action) {
+      const label = action === 'approve' ? 'Approve' : 'Reject';
+      if (!confirm(`Are you sure you want to ${label.toLowerCase()} this claim?`)) return;
+
+      const adminNotes = document.getElementById('notes-' + claimId)?.value || '';
+
+      try {
+        const res = await fetch(`/api/claims/${claimId}/${action}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminNotes })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showToast(`Claim ${label.toLowerCase()}d successfully!`, action === 'approve' ? 'success' : 'info');
+          loadClaims(currentTab);
+        } else {
+          showToast(data.error || `Failed to ${label.toLowerCase()} claim.`, 'error');
+        }
+      } catch (err) {
+        showToast('Network error. Please try again.', 'error');
+      }
+    }
+
+    loadClaims('pending');
+  </script>
+</body>
+</html>
