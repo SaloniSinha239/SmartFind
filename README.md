@@ -60,7 +60,48 @@ SmartFind/
 
 ---
 
-## Setup & Run
+## 🐳 Quick Start with Docker (Recommended)
+
+> **No Node.js or MongoDB installation required.** Docker handles everything.
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+
+### Steps
+
+**1. Clone the repo**
+```bash
+git clone <repo-url>
+cd SmartFind
+```
+
+**2. Create your `.env` file** from the example:
+```bash
+cp .env.example .env
+```
+Then edit `.env` — at minimum set `SESSION_SECRET` and your SMTP credentials.
+> ⚠️ **Do NOT change `MONGO_URI`** — Docker Compose already sets it to point at the bundled MongoDB container.
+
+**3. Build and start everything**
+```bash
+docker compose up --build
+```
+
+**4. Open in browser**
+```
+http://localhost:3000
+```
+
+**5. Stop everything**
+```bash
+docker compose down
+```
+> To also wipe the database volume: `docker compose down -v`
+
+---
+
+## Setup & Run (Without Docker)
 
 ### 1. Install Dependencies
 

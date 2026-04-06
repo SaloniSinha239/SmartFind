@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  # ── MongoDB ────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: smartfind-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: smartfind
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"          # expose only for local debugging; remove in prod
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── SmartFind App ───────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartfind-app
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy   # wait for Mongo to be ready
+    ports:
+      - "3000:3000"
+    environment:
+      # Override the default; points to the 'mongo' service inside Docker network
+      MONGO_URI: mongodb://mongo:27017/smartfind
+      PORT: 3000
+      # The rest come from the .env file (not committed to git)
+    env_file:
+      - .env                         # teammate creates this from .env.example
+    volumes:
+      # Persist uploaded files across container restarts
+      - uploads_data:/app/public/uploads
+
+volumes:
+  mongo_data:
+  uploads_data:
